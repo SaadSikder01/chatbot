@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Chatbot</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#0ea5a6; --user:#0b84ff;
+      --text:#e6eef6; --muted:#9fb3c8;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter, "Helvetica Neue", Arial, sans-serif;
+      background:linear-gradient(180deg,#071021 0%, #071a2a 100%);
+      color:var(--text); -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      min-height:100vh; display:flex; align-items:center; justify-content:center;
+      padding:20px;
+    }
+    .app{
+      width:100%; max-width:920px; height:calc(100vh - 64px);
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04));
+      border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.6); display:flex; flex-direction:column;
+      overflow:hidden;
+    }
+
+    /* header */
+    .app-header{
+      display:flex; gap:12px; align-items:center; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.02);
+    }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .logo{ width:40px; height:40px; border-radius:8px; background:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:700; color:#012; }
+    h1{ font-size:16px; margin:0; }
+    p.sub{ margin:0; color:var(--muted); font-size:12px; }
+
+    /* chat area */
+    .chat-wrap{ flex:1; display:flex; flex-direction:column; padding:16px; gap:12px; overflow:auto; }
+    .messages{ display:flex; flex-direction:column; gap:8px; }
+
+    .msg{ max-width:78%; padding:10px 12px; border-radius:12px; line-height:1.35; font-size:14px; }
+    .msg.user{ align-self:flex-end; background:linear-gradient(90deg,var(--user), #36a3ff); color:white; border-bottom-right-radius:6px; }
+    .msg.bot{ align-self:flex-start; background:rgba(255,255,255,0.03); color:var(--text); border-bottom-left-radius:6px; }
+    .meta{ font-size:11px; color:var(--muted); margin-top:6px; }
+
+    /* input area */
+    .composer{ display:flex; gap:8px; padding:12px; border-top:1px solid rgba(255,255,255,0.02); }
+    .input{
+      flex:1; display:flex; gap:8px; align-items:center;
+      background:rgba(255,255,255,0.02); padding:8px; border-radius:10px;
+    }
+    textarea#inputBox{ width:100%; resize:none; border:0; outline:none; background:transparent; color:var(--text); font-size:14px; padding:6px; height:38px; }
+    button#sendBtn{ background:var(--accent); border:0; color:#022; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; }
+    button#sendBtn:disabled{ opacity:0.6; cursor:not-allowed; }
+
+    /* small screens */
+    @media (max-width:520px){
+      .app{ height:calc(100vh - 32px); padding:0; border-radius:10px; }
+      .logo{ width:34px; height:34px; font-size:14px; }
+      h1{ font-size:14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Chatbot">
+    <div class="app-header">
+      <div class="brand">
+        <div class="logo">CB</div>
+        <div>
+          <h1>My Chatbot</h1>
+          <p class="sub">Ask anything — powered by your local Ollama</p>
+        </div>
+      </div>
+      <div style="margin-left:auto; color:var(--muted); font-size:13px;">Status: <span id="status">Idle</span></div>
+    </div>
+
+    <div class="chat-wrap">
+      <div id="messages" class="messages" aria-live="polite"></div>
+    </div>
+
+    <div class="composer">
+      <div class="input">
+        <textarea id="inputBox" placeholder="Type your question and press Enter..." aria-label="Message input"></textarea>
+      </div>
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // =========== CONFIG ===========
+    // Replace with your public backend endpoint (Cloudflare Tunnel / API)
+    // Example: const BACKEND_URL = "https://abc123.trycloudflare.com/chat";
+    const BACKEND_URL = "https://REPLACE_WITH_YOUR_BACKEND/chat";
+    // ==============================
+
+    const messagesEl = document.getElementById('messages');
+    const inputBox = document.getElementById('inputBox');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusEl = document.getElementById('status');
+
+    // Helpers
+    function addMessage(text, who='bot'){
+      const el = document.createElement('div');
+      el.className = 'msg ' + (who==='user' ? 'user' : 'bot');
+      el.textContent = text;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return el;
+    }
+    function setStatus(s){ statusEl.textContent = s; }
+
+    // send flow: tries to use fetch streaming if available, else fallback to normal fetch
+    async function sendMessage() {
+      const text = inputBox.value.trim();
+      if(!text) return;
+      // UI
+      addMessage(text,'user');
+      inputBox.value = ''; inputBox.style.height = '38px';
+      sendBtn.disabled = true; setStatus('Sending...');
+
+      // prepare streaming UI
+      const botEl = addMessage('','bot');
+      botEl.classList.add('typing');
+
+      try {
+        // Try streaming using ReadableStream (modern browsers + server streaming)
+        const res = await fetch(BACKEND_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ msg: text })
+        });
+
+        if (!res.ok) throw new Error('Server error: ' + res.status);
+
+        // If body is a stream, read chunks
+        if (res.body && res.body.getReader) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let done = false;
+          while (!done) {
+            const {value, done: d} = await reader.read();
+            done = d;
+            if (value) {
+              const chunk = decoder.decode(value);
+              // server may send JSON chunks or raw text; try to parse JSON safely
+              try {
+                // handle case where server sends JSON-per-line like {"response":"text"}
+                // find any JSON objects in chunk
+                const objs = chunk.match(/\{.*?\}/g);
+                if (objs) {
+                  for (const o of objs) {
+                    try {
+                      const parsed = JSON.parse(o);
+                      if (parsed.response != null) botEl.textContent += parsed.response;
+                      else botEl.textContent += (parsed.text ?? o);
+                    } catch(e){ botEl.textContent += o; }
+                  }
+                } else {
+                  // raw text chunk
+                  botEl.textContent += chunk;
+                }
+              } catch (e){
+                botEl.textContent += chunk;
+              }
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+          }
+        } else {
+          // fallback: read full text
+          const txt = await res.text();
+          // try parse JSON
+          try {
+            const j = JSON.parse(txt);
+            botEl.textContent += (j.reply ?? j.response ?? txt);
+          } catch(e){
+            botEl.textContent += txt;
+          }
+        }
+
+        botEl.classList.remove('typing');
+        setStatus('Idle');
+
+      } catch (err) {
+        botEl.classList.remove('typing');
+        botEl.textContent = 'Error: ' + err.message;
+        setStatus('Error');
+        console.error(err);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    // auto-resize textarea
+    inputBox.addEventListener('input', () => {
+      inputBox.style.height = 'auto';
+      inputBox.style.height = (inputBox.scrollHeight)+'px';
+    });
+
+    // keyboard shortcuts
+    inputBox.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    sendBtn.addEventListener('click', sendMessage);
+
+    // initial welcome
+    addMessage('Hello! Ask me anything.', 'bot');
+
+    // small helper: show warning if BACKEND_URL not set
+    if (BACKEND_URL.includes('REPLACE_WITH_YOUR_BACKEND')) {
+      setStatus('Configure BACKEND_URL in the file');
+      addMessage('⚠️ Backend URL not configured. Edit index.html and set BACKEND_URL variable.', 'bot');
+      sendBtn.disabled = true;
+    } else {
+      setStatus('Ready');
+    }
+  </script>
+</body>
+</html>
