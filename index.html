@@ -1,221 +1,514 @@
-<!doctype html>
-<html lang="bn">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>My Chatbot</title>
-  <style>
-    :root{
-      --bg:#0f1724; --card:#0b1220; --accent:#0ea5a6; --user:#0b84ff;
-      --text:#e6eef6; --muted:#9fb3c8;
+<!-- হ্যাকার স্টাইল চ্যাটবট -->
+<style>
+    /* চ্যাটবট কন্টেইনার */
+    .chatbot-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        font-family: 'Courier New', monospace;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:Inter, "Helvetica Neue", Arial, sans-serif;
-      background:linear-gradient(180deg,#071021 0%, #071a2a 100%);
-      color:var(--text); -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      min-height:100vh; display:flex; align-items:center; justify-content:center;
-      padding:20px;
+    
+    /* চ্যাটবট বাটন */
+    .chatbot-toggle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #0f0, #0a0);
+        color: black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 0 15px #0f0, 0 0 30px rgba(0, 255, 0, 0.3);
+        border: 2px solid #0f0;
+        transition: all 0.3s;
     }
-    .app{
-      width:100%; max-width:920px; height:calc(100vh - 64px);
-      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04));
-      border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.6); display:flex; flex-direction:column;
-      overflow:hidden;
+    
+    .chatbot-toggle:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px #0f0, 0 0 40px rgba(0, 255, 0, 0.5);
     }
-
-    /* header */
-    .app-header{
-      display:flex; gap:12px; align-items:center; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.02);
+    
+    /* চ্যাটবট উইন্ডো */
+    .chatbot-window {
+        position: absolute;
+        bottom: 70px;
+        right: 0;
+        width: 350px;
+        height: 500px;
+        background: rgba(0, 20, 0, 0.9);
+        border: 2px solid #0f0;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
     }
-    .brand { display:flex; align-items:center; gap:12px; }
-    .logo{ width:40px; height:40px; border-radius:8px; background:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:700; color:#012; }
-    h1{ font-size:16px; margin:0; }
-    p.sub{ margin:0; color:var(--muted); font-size:12px; }
-
-    /* chat area */
-    .chat-wrap{ flex:1; display:flex; flex-direction:column; padding:16px; gap:12px; overflow:auto; }
-    .messages{ display:flex; flex-direction:column; gap:8px; }
-
-    .msg{ max-width:78%; padding:10px 12px; border-radius:12px; line-height:1.35; font-size:14px; }
-    .msg.user{ align-self:flex-end; background:linear-gradient(90deg,var(--user), #36a3ff); color:white; border-bottom-right-radius:6px; }
-    .msg.bot{ align-self:flex-start; background:rgba(255,255,255,0.03); color:var(--text); border-bottom-left-radius:6px; }
-    .meta{ font-size:11px; color:var(--muted); margin-top:6px; }
-
-    /* input area */
-    .composer{ display:flex; gap:8px; padding:12px; border-top:1px solid rgba(255,255,255,0.02); }
-    .input{
-      flex:1; display:flex; gap:8px; align-items:center;
-      background:rgba(255,255,255,0.02); padding:8px; border-radius:10px;
+    
+    .chatbot-window.active {
+        display: flex;
+        animation: terminalOpen 0.5s;
     }
-    textarea#inputBox{ width:100%; resize:none; border:0; outline:none; background:transparent; color:var(--text); font-size:14px; padding:6px; height:38px; }
-    button#sendBtn{ background:var(--accent); border:0; color:#022; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; }
-    button#sendBtn:disabled{ opacity:0.6; cursor:not-allowed; }
-
-    /* small screens */
-    @media (max-width:520px){
-      .app{ height:calc(100vh - 32px); padding:0; border-radius:10px; }
-      .logo{ width:34px; height:34px; font-size:14px; }
-      h1{ font-size:14px; }
+    
+    @keyframes terminalOpen {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
     }
-  </style>
-</head>
-<body>
-  <div class="app" role="application" aria-label="Chatbot">
-    <div class="app-header">
-      <div class="brand">
-        <div class="logo">CB</div>
-        <div>
-          <h1>My Chatbot</h1>
-          <p class="sub">Ask anything — powered by your local Ollama</p>
-        </div>
-      </div>
-      <div style="margin-left:auto; color:var(--muted); font-size:13px;">Status: <span id="status">Idle</span></div>
-    </div>
-
-    <div class="chat-wrap">
-      <div id="messages" class="messages" aria-live="polite"></div>
-    </div>
-
-    <div class="composer">
-      <div class="input">
-        <textarea id="inputBox" placeholder="Type your question and press Enter..." aria-label="Message input"></textarea>
-      </div>
-      <button id="sendBtn">Send</button>
-    </div>
-  </div>
-
-  <script>
-    // =========== CONFIG ===========
-    // Replace with your public backend endpoint (Cloudflare Tunnel / API)
-    // Example: const BACKEND_URL = "https://abc123.trycloudflare.com/chat";
-    const BACKEND_URL = "https://addition-mailto-motion-qty.trycloudflare.com/chat";
-    // ==============================
-
-    const messagesEl = document.getElementById('messages');
-    const inputBox = document.getElementById('inputBox');
-    const sendBtn = document.getElementById('sendBtn');
-    const statusEl = document.getElementById('status');
-
-    // Helpers
-    function addMessage(text, who='bot'){
-      const el = document.createElement('div');
-      el.className = 'msg ' + (who==='user' ? 'user' : 'bot');
-      el.textContent = text;
-      messagesEl.appendChild(el);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return el;
+    
+    /* চ্যাটবট হেডার */
+    .chatbot-header {
+        background: rgba(0, 30, 0, 0.9);
+        padding: 15px;
+        border-bottom: 1px solid #0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    function setStatus(s){ statusEl.textContent = s; }
-
-    // send flow: tries to use fetch streaming if available, else fallback to normal fetch
-    async function sendMessage() {
-      const text = inputBox.value.trim();
-      if(!text) return;
-      // UI
-      addMessage(text,'user');
-      inputBox.value = ''; inputBox.style.height = '38px';
-      sendBtn.disabled = true; setStatus('Sending...');
-
-      // prepare streaming UI
-      const botEl = addMessage('','bot');
-      botEl.classList.add('typing');
-
-      try {
-        // Try streaming using ReadableStream (modern browsers + server streaming)
-        const res = await fetch(BACKEND_URL, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ msg: text })
-        });
-
-        if (!res.ok) throw new Error('Server error: ' + res.status);
-
-        // If body is a stream, read chunks
-        if (res.body && res.body.getReader) {
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let done = false;
-          while (!done) {
-            const {value, done: d} = await reader.read();
-            done = d;
-            if (value) {
-              const chunk = decoder.decode(value);
-              // server may send JSON chunks or raw text; try to parse JSON safely
-              try {
-                // handle case where server sends JSON-per-line like {"response":"text"}
-                // find any JSON objects in chunk
-                const objs = chunk.match(/\{.*?\}/g);
-                if (objs) {
-                  for (const o of objs) {
-                    try {
-                      const parsed = JSON.parse(o);
-                      if (parsed.response != null) botEl.textContent += parsed.response;
-                      else botEl.textContent += (parsed.text ?? o);
-                    } catch(e){ botEl.textContent += o; }
-                  }
-                } else {
-                  // raw text chunk
-                  botEl.textContent += chunk;
-                }
-              } catch (e){
-                botEl.textContent += chunk;
-              }
-              messagesEl.scrollTop = messagesEl.scrollHeight;
-            }
-          }
-        } else {
-          // fallback: read full text
-          const txt = await res.text();
-          // try parse JSON
-          try {
-            const j = JSON.parse(txt);
-            botEl.textContent += (j.reply ?? j.response ?? txt);
-          } catch(e){
-            botEl.textContent += txt;
-          }
+    
+    .chatbot-title {
+        color: #0f0;
+        font-weight: bold;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .chatbot-title::before {
+        content: ">";
+        color: #0f0;
+    }
+    
+    .chatbot-close {
+        background: transparent;
+        border: none;
+        color: #0f0;
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .chatbot-close:hover {
+        color: #f00;
+        text-shadow: 0 0 10px #f00;
+    }
+    
+    /* চ্যাটবট মেসেজ এরিয়া */
+    .chatbot-messages {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    /* স্ক্রলবার স্টাইল */
+    .chatbot-messages::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .chatbot-messages::-webkit-scrollbar-track {
+        background: rgba(0, 30, 0, 0.5);
+    }
+    
+    .chatbot-messages::-webkit-scrollbar-thumb {
+        background: #0a0;
+        border-radius: 4px;
+    }
+    
+    /* মেসেজ স্টাইল */
+    .message {
+        padding: 12px;
+        border-radius: 8px;
+        max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.4;
+        animation: messageAppear 0.3s;
+    }
+    
+    @keyframes messageAppear {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .bot-message {
+        background: rgba(0, 40, 0, 0.7);
+        color: #0f0;
+        border-left: 3px solid #0f0;
+        align-self: flex-start;
+    }
+    
+    .user-message {
+        background: rgba(30, 30, 0, 0.7);
+        color: #ff0;
+        border-right: 3px solid #ff0;
+        align-self: flex-end;
+    }
+    
+    /* টাইপিং ইফেক্ট */
+    .typing-indicator {
+        display: inline-block;
+    }
+    
+    .typing-indicator span {
+        display: inline-block;
+        animation: blink 1.4s infinite both;
+        color: #0f0;
+    }
+    
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+    }
+    
+    /* চ্যাটবট ইনপুট */
+    .chatbot-input-area {
+        padding: 15px;
+        border-top: 1px solid #0f0;
+        background: rgba(0, 20, 0, 0.9);
+        display: flex;
+        gap: 10px;
+    }
+    
+    .chatbot-input {
+        flex: 1;
+        padding: 12px;
+        background: rgba(0, 10, 0, 0.8);
+        border: 1px solid #0f0;
+        border-radius: 5px;
+        color: #0f0;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        outline: none;
+    }
+    
+    .chatbot-input:focus {
+        box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+    
+    .chatbot-input::placeholder {
+        color: #0a0;
+    }
+    
+    .chatbot-send {
+        background: rgba(0, 30, 0, 0.9);
+        color: #0f0;
+        border: 1px solid #0f0;
+        border-radius: 5px;
+        padding: 0 20px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    
+    .chatbot-send:hover {
+        background: rgba(0, 40, 0, 0.9);
+        box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+    
+    /* কোয়িক রেস্পন্স বাটন */
+    .quick-responses {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 15px;
+        background: rgba(0, 20, 0, 0.7);
+        border-top: 1px solid #0a0;
+    }
+    
+    .quick-btn {
+        background: rgba(0, 30, 0, 0.8);
+        color: #0f0;
+        border: 1px solid #0a0;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .quick-btn:hover {
+        background: rgba(0, 40, 0, 0.9);
+        border-color: #0f0;
+    }
+    
+    /* ছোট স্ক্রিনের জন্য রেস্পন্সিভ */
+    @media (max-width: 480px) {
+        .chatbot-window {
+            width: 300px;
+            height: 450px;
+            right: -10px;
         }
-
-        botEl.classList.remove('typing');
-        setStatus('Idle');
-
-      } catch (err) {
-        botEl.classList.remove('typing');
-        botEl.textContent = 'Error: ' + err.message;
-        setStatus('Error');
-        console.error(err);
-      } finally {
-        sendBtn.disabled = false;
-      }
+        
+        .chatbot-container {
+            bottom: 10px;
+            right: 10px;
+        }
     }
+</style>
 
-    // auto-resize textarea
-    inputBox.addEventListener('input', () => {
-      inputBox.style.height = 'auto';
-      inputBox.style.height = (inputBox.scrollHeight)+'px';
+<div class="chatbot-container" id="chatbotContainer">
+    <div class="chatbot-toggle" id="chatbotToggle">
+        <span style="font-size: 28px;">></span>
+    </div>
+    <div class="chatbot-window" id="chatbotWindow">
+        <div class="chatbot-header">
+            <div class="chatbot-title">
+                <span>H4CK3R-B0T v1.0</span>
+                <span style="font-size: 12px; color: #0a0;">[ACTIVE]</span>
+            </div>
+            <button class="chatbot-close" id="chatbotClose">×</button>
+        </div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <!-- মেসেজগুলো এখানে যোগ হবে -->
+        </div>
+        <div class="quick-responses" id="quickResponses">
+            <!-- কোয়িক রেস্পন্স বাটন -->
+        </div>
+        <div class="chatbot-input-area">
+            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="কমান্ড লিখুন...">
+            <button class="chatbot-send" id="chatbotSend">SEND</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // চ্যাটবট লজিক
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatbotToggle = document.getElementById('chatbotToggle');
+        const chatbotWindow = document.getElementById('chatbotWindow');
+        const chatbotClose = document.getElementById('chatbotClose');
+        const chatbotMessages = document.getElementById('chatbotMessages');
+        const chatbotInput = document.getElementById('chatbotInput');
+        const chatbotSend = document.getElementById('chatbotSend');
+        const quickResponses = document.getElementById('quickResponses');
+        
+        // চ্যাটবট টগল
+        chatbotToggle.addEventListener('click', () => {
+            chatbotWindow.classList.toggle('active');
+            if (chatbotWindow.classList.contains('active')) {
+                // প্রথম বার চ্যাটবট খুললে ওয়েলকাম মেসেজ দেখাবে
+                if (chatbotMessages.children.length === 0) {
+                    addBotMessage("SYS_LOAD: হ্যাকার-বট এক্টিভেট হয়েছে...");
+                    setTimeout(() => {
+                        addBotMessage("USER_QUERY: আপনার ওয়েবসাইট সম্পর্কিত যে কোন সমস্যার সমাধান জানতে আমাকে জিজ্ঞেস করুন।");
+                        showQuickResponses();
+                    }, 800);
+                }
+            }
+        });
+        
+        chatbotClose.addEventListener('click', () => {
+            chatbotWindow.classList.remove('active');
+        });
+        
+        // মেসেজ সেন্ড
+        function sendMessage() {
+            const message = chatbotInput.value.trim();
+            if (message) {
+                addUserMessage(message);
+                chatbotInput.value = '';
+                setTimeout(() => {
+                    processUserInput(message);
+                }, 500);
+            }
+        }
+        
+        chatbotSend.addEventListener('click', sendMessage);
+        
+        chatbotInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // মেসেজ যোগ করার ফাংশন
+        function addBotMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+            
+            // টাইপিং ইফেক্ট সহ মেসেজ
+            if (text.includes('SYS_LOAD') || text.includes('USER_QUERY')) {
+                messageDiv.innerHTML = `<span style="color: #0f0;">${text.split(':')[0]}:</span> ${text.split(':')[1]}`;
+            } else {
+                messageDiv.innerHTML = text;
+            }
+            
+            chatbotMessages.appendChild(messageDiv);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+        
+        function addUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            messageDiv.textContent = text;
+            chatbotMessages.appendChild(messageDiv);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+        
+        // টাইপিং ইফেক্ট সহ বট রেস্পন্স
+        function addTypingMessage() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message typing-indicator';
+            messageDiv.innerHTML = '<span>.</span><span>.</span><span>.</span>';
+            chatbotMessages.appendChild(messageDiv);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+            return messageDiv;
+        }
+        
+        // কোয়িক রেস্পন্স বাটন দেখাবে
+        function showQuickResponses() {
+            const questions = [
+                "লগইন সমস্যা",
+                "ভিডিও কাজ করছে না",
+                "সাউন্ড চালু/বন্ধ করা",
+                "মোবাইলে লেআউট সমস্যা",
+                "লোডিং সমস্যা",
+                "অন্যান্য সমস্যা"
+            ];
+            
+            quickResponses.innerHTML = '';
+            
+            questions.forEach(question => {
+                const button = document.createElement('button');
+                button.className = 'quick-btn';
+                button.textContent = question;
+                button.addEventListener('click', () => {
+                    addUserMessage(question);
+                    processUserInput(question);
+                });
+                quickResponses.appendChild(button);
+            });
+        }
+        
+        // ইউজার ইনপুট প্রসেসিং
+        function processUserInput(input) {
+            const typingMessage = addTypingMessage();
+            
+            // কৃত্রিম বিলম্ব (বাস্তবসম্মত দেখানোর জন্য)
+            setTimeout(() => {
+                typingMessage.remove();
+                let response = getBotResponse(input);
+                addBotMessage(response);
+                
+                // কিছু নির্দিষ্ট প্রশ্নের পর কোয়িক রেস্পন্স আপডেট
+                if (input.includes("লগইন") || input.includes("login")) {
+                    updateQuickResponsesForLogin();
+                }
+            }, 1000 + Math.random() * 1000);
+        }
+        
+        // লগইন সম্পর্কিত কোয়িক রেস্পন্স
+        function updateQuickResponsesForLogin() {
+            const loginQuestions = [
+                "ইউজার আইডি ভুল",
+                "saad@saad কিভাবে লগইন করব?",
+                "রেজিস্ট্রেশন সমস্যা",
+                "পাসওয়ার্ড ভুলে গেছি",
+                "অন্যান্য সমস্যা"
+            ];
+            
+            quickResponses.innerHTML = '';
+            
+            loginQuestions.forEach(question => {
+                const button = document.createElement('button');
+                button.className = 'quick-btn';
+                button.textContent = question;
+                button.addEventListener('click', () => {
+                    addUserMessage(question);
+                    processUserInput(question);
+                });
+                quickResponses.appendChild(button);
+            });
+        }
+        
+        // বট রেস্পন্স জেনারেটর
+        function getBotResponse(input) {
+            const lowerInput = input.toLowerCase();
+            
+            // লগইন সম্পর্কিত প্রশ্ন
+            if (lowerInput.includes("লগইন") || lowerInput.includes("login") || lowerInput.includes("ইউজার")) {
+                if (lowerInput.includes("ভুল") || lowerInput.includes("পাওয়া যাচ্ছে না")) {
+                    return "SYS_RESP: ইউজার আইডি খুঁজে পাওয়া যাচ্ছে না? দয়া করে নিশ্চিত করুন আপনি সঠিক ইউজার আইডি দিচ্ছেন। যদি আপনার আইডি না থাকে, তাহলে (saad@saad) দিয়ে লগইন করুন এবং রেজিস্ট্রেশন সম্পন্ন করুন।";
+                } else if (lowerInput.includes("saad@saad")) {
+                    return "SYS_RESP: (saad@saad) দিয়ে লগইন করলে আপনাকে ফেসবুক পেজে রিডাইরেক্ট করা হবে যেখানে রেজিস্ট্রেশন সম্পন্ন করতে পারবেন। এটি একটি ডেমো ইউজার আইডি।";
+                } else if (lowerInput.includes("রেজিস্ট্রেশন") || lowerInput.includes("registration")) {
+                    return "SYS_RESP: রেজিস্ট্রেশন করতে হলে (saad@saad) ইউজার আইডি দিয়ে লগইন করুন, এরপর আপনাকে ফেসবুক পেজে নিয়ে যাওয়া হবে যেখানে রেজিস্ট্রেশন প্রসেস সম্পন্ন করতে পারবেন।";
+                } else {
+                    return "SYS_RESP: লগইন সমস্যা সমাধানের জন্য:\n1. সঠিক ইউজার আইডি দিন\n2. যদি আইডি না থাকে, (saad@saad) দিয়ে লগইন করুন\n3. ইন্টারনেট সংযোগ চেক করুন\n4. পেজ রিলোড করুন\n5. সমস্যা থাকলে অ্যাডমিনের সাথে যোগাযোগ করুন";
+                }
+            }
+            
+            // ভিডিও সম্পর্কিত প্রশ্ন
+            else if (lowerInput.includes("ভিডিও") || lowerInput.includes("video") || lowerInput.includes("naruto")) {
+                return "SYS_RESP: ব্যাকগ্রাউন্ড ভিডিও সমস্যা সমাধান:\n1. ব্রাউজারটি আপডেট আছে কিনা চেক করুন\n2. ইন্টারনেট স্পিড চেক করুন\n3. ব্রাউজার ক্যাশে ক্লিয়ার করুন\n4. অন্য ব্রাউজারে চেষ্টা করুন\n5. ভিডিও ফাইলটি এক্সেসযোগ্য কিনা নিশ্চিত করুন";
+            }
+            
+            // সাউন্ড সম্পর্কিত প্রশ্ন
+            else if (lowerInput.includes("সাউন্ড") || lowerInput.includes("sound") || lowerInput.includes("music") || lowerInput.includes("শব্দ")) {
+                return "SYS_RESP: সাউন্ড সমস্যা সমাধান:\n1. উপরের ডানকোণে 🔊/🔇 বাটনে ক্লিক করে সাউন্ড টগল করুন\n2. ব্রাউজার ট্যাবটি আনমিউট করুন\n3. ডিভাইসের ভলিউম চেক করুন\n4. অন্য ব্রাউজারে চেষ্টা করুন\n5. অডিও ফাইলটি এক্সেসযোগ্য কিনা নিশ্চিত করুন";
+            }
+            
+            // মোবাইল লেআউট সম্পর্কিত প্রশ্ন
+            else if (lowerInput.includes("মোবাইল") || lowerInput.includes("mobile") || lowerInput.includes("লেআউট") || lowerInput.includes("layout")) {
+                return "SYS_RESP: মোবাইল লেআউট সমস্যা সমাধান:\n1. পেজটি রিলোড করুন\n2. ব্রাউজার জুম 100% সেট করুন\n3. ব্রাউজার ক্যাশে ক্লিয়ার করুন\n4. অন্য ব্রাউজারে চেষ্টা করুন\n5. ডিভাইস ওরিয়েন্টেশন পরিবর্তন করুন";
+            }
+            
+            // লোডিং সম্পর্কিত প্রশ্ন
+            else if (lowerInput.includes("লোড") || lowerInput.includes("loading") || lowerInput.includes("loader")) {
+                return "SYS_RESP: লোডিং সমস্যা সমাধান:\n1. ইন্টারনেট সংযোগ চেক করুন\n2. পেজটি রিলোড করুন (Ctrl+F5)\n3. ব্রাউজার ক্যাশে ক্লিয়ার করুন\n4. অ্যাডব্লকার বন্ধ করুন\n5. যদি লোডার আটকে থাকে, পেজটি ক্লোজ করে আবার ওপেন করুন";
+            }
+            
+            // সাধারণ সমস্যা
+            else if (lowerInput.includes("সমস্যা") || lowerInput.includes("problem") || lowerInput.includes("error")) {
+                return "SYS_RESP: সাধারণ সমস্যা সমাধান:\n1. পেজ রিলোড করুন (Ctrl+F5)\n2. ব্রাউজার আপডেট করুন\n3. ক্যাশে ও কুকিজ ক্লিয়ার করুন\n4. অন্য ব্রাউজারে চেষ্টা করুন\n5. ইন্টারনেট সংযোগ চেক করুন\n6. সমস্যা বিস্তারিত জানালে সাহায্য করতে পারব";
+            }
+            
+            // হেল্প বা সাহায্য
+            else if (lowerInput.includes("সাহায্য") || lowerInput.includes("help") || lowerInput.includes("হেল্প")) {
+                return "SYS_RESP: সাহায্যের জন্য উপরের কোয়িক রেস্পন্স বাটনে ক্লিক করুন অথবা আপনার সমস্যা বিস্তারিত লিখুন। আমি নিম্নলিখিত বিষয়ে সাহায্য করতে পারি:\n- লগইন সমস্যা\n- ভিডিও/সাউন্ড সমস্যা\n- মোবাইল লেআউট\n- লোডিং সমস্যা\n- অন্যান্য টেকনিক্যাল সমস্যা";
+            }
+            
+            // ধন্যবাদ বা থ্যাংকস
+            else if (lowerInput.includes("ধন্যবাদ") || lowerInput.includes("thank") || lowerInput.includes("thanks")) {
+                return "SYS_RESP: আপনাকে স্বাগতম! কোনো সমস্যা থাকলে আবার জানাবেন। SYS_OUT>";
+            }
+            
+            // হ্যালো বা শুরু
+            else if (lowerInput.includes("হ্যালো") || lowerInput.includes("hello") || lowerInput.includes("hi") || lowerInput.includes("শুরু")) {
+                return "SYS_RESP: হ্যালো! আমি আপনার ওয়েবসাইটের হ্যাকার-বট। ওয়েবসাইট সম্পর্কিত যে কোনো সমস্যার সমাধানে আপনাকে সাহায্য করতে পারি। আপনার সমস্যা সম্পর্কে জানান।";
+            }
+            
+            // ডিফল্ট রেস্পন্স
+            else {
+                return "SYS_RESP: কমান্ড রিকগনাইজড না। দয়া করে আপনার সমস্যা আরো স্পষ্টভাবে বর্ণনা করুন অথবা উপরের কোয়িক রেস্পন্স বাটন ব্যবহার করুন।";
+            }
+        }
+        
+        // পেজ লোড হলে চ্যাটবট বুট আপ মেসেজ
+        setTimeout(() => {
+            if (!localStorage.getItem('chatbotWelcomed')) {
+                chatbotWindow.classList.add('active');
+                addBotMessage("SYS_BOOT: হ্যাকার-বট সিস্টেম প্রস্তুত...");
+                setTimeout(() => {
+                    addBotMessage("SYS_READY: আপনার ওয়েবসাইটের যেকোনো সমস্যার সমাধান জানতে আমাকে জিজ্ঞেস করুন।");
+                    showQuickResponses();
+                    localStorage.setItem('chatbotWelcomed', 'true');
+                }, 1000);
+            }
+        }, 2000);
     });
-
-    // keyboard shortcuts
-    inputBox.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-    sendBtn.addEventListener('click', sendMessage);
-
-    // initial welcome
-    addMessage('Hello! Ask me anything.', 'bot');
-
-    // small helper: show warning if BACKEND_URL not set
-    if (BACKEND_URL.includes('REPLACE_WITH_YOUR_BACKEND')) {
-      setStatus('Configure BACKEND_URL in the file');
-      addMessage('⚠️ Backend URL not configured. Edit index.html and set BACKEND_URL variable.', 'bot');
-      sendBtn.disabled = true;
-    } else {
-      setStatus('Ready');
-    }
-  </script>
-</body>
-</html>
+</script>
