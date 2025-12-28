@@ -48,15 +48,7 @@ body, html {
     font-family: Arial, sans-serif;
 }
 
-#bgVideo {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover; 
-    z-index: -1;       
-}
+
 
 .box{
     margin-left:550px;
@@ -477,12 +469,10 @@ body, html {
 </div>
 
 <!-- ব্যাকগ্রাউন্ড মিউজিক -->
-<audio id="bgMusic" autoplay muted loop>
-  <source src="music1.mp3" type="audio/mpeg">
-</audio>
+
 
 <!-- সাউন্ড বাটন -->
-<div id="soundBtn" onclick="toggleSound()">🔇</div>
+
 
 <!-- লগইন বক্স -->
 <div class="box">
@@ -496,7 +486,7 @@ body, html {
 
 <!-- চ্যাটবট নোটিফিকেশন -->
 <div class="notification" id="chatNotification">
-    হ্যাকার-বট: নতুন মেসেজ
+    Koli: নতুন মেসেজ
 </div>
 
 <!-- থিম সুইচ -->
@@ -512,7 +502,7 @@ body, html {
     <div class="chatbot-window" id="chatbotWindow">
         <div class="chatbot-header">
             <div class="chatbot-title">
-                <span>HACKER-BOT v1.0</span>
+                <span>Koli v0.0.01</span>
             </div>
             <div class="chatbot-controls">
                 <button class="chatbot-btn" id="clearBtn" title="পরিষ্কার">C</button>
@@ -537,9 +527,7 @@ body, html {
 </div>
 
 <!-- ভিডিও ব্যাকগ্রাউন্ড -->
-<video autoplay muted loop id="bgVideo">
-  <source src="naruto for bg.mp4" type="video/mp4">
-</video>
+
 
 <!-- সাউন্ড এলিমেন্ট -->
 <audio id="chatSound" preload="auto">
@@ -547,18 +535,7 @@ body, html {
 </audio>
 
 <script>
-// ১. মিউজিক কন্ট্রোল ফাংশন
-function toggleSound() {
-    let music = document.getElementById("bgMusic");
-    let btn = document.getElementById("soundBtn");
-    if (music.muted) {
-        music.muted = false;
-        btn.innerHTML = "🔊";
-    } else {
-        music.muted = true;
-        btn.innerHTML = "🔇";
-    }
-}
+
 
 // ২. লগইন ফাংশন
 async function saad(){
