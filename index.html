@@ -475,14 +475,7 @@ body, html {
 
 
 <!-- লগইন বক্স -->
-<div class="box">
-<marquee direction="scroll">
-একটি সঠিক ইউজার আইডি দিয়ে লগইন করুন। যদি ইউজার আইডি না থাকে তবে (saad@saad) লিখে লগইন করে রেজিস্ট্রেশ করুন।
-</marquee>
-<input type="password" id="input" class="input" placeholder="সঠিক ইউজার আইডি দিন" required>
-<br><br>
-<input type="submit" value="log in" id="butn" onclick="saad()" class="submit">
-</div>
+
 
 <!-- চ্যাটবট নোটিফিকেশন -->
 <div class="notification" id="chatNotification">
@@ -538,39 +531,7 @@ body, html {
 
 
 // ২. লগইন ফাংশন
-async function saad(){
-    const input = document.getElementById("input").value.trim();
-    const loader = document.getElementById("loader");
-    const apiURL = "https://script.google.com/macros/s/AKfycbwZ7vsFRGKf5K5UVFSmlHNDuu_svUiwq-7TGybxDIjx9bS5mixp7k0AdXrDTwxNfg-j/exec";
 
-    if(!input){
-        alert("ইউজার আইডি দিন!");
-        return;
-    }
-
-    loader.style.display = "flex";
-
-    try {
-        let response = await fetch(apiURL);
-        let users = await response.json();
-
-        if(users.includes(input)){
-            window.location.href = "second.html";
-        }
-        else if(input === "saad@saad"){
-            window.location.href = "https://www.facebook.com/Username.SaadSikder";
-        }
-        else {
-            loader.style.display = "none";
-            alert("ইউজার খুজে পাওয়া যাচ্ছে না! দয়া করে সঠিক তথ্য দিয়ে লগইন করুন।");
-        }
-
-    } catch (error) {
-        loader.style.display = "none";
-        alert("সার্ভারের সাথে সংযোগ করা যাচ্ছে না!");
-        console.error(error);
-    }
-}
 
 // ৩. চ্যাটবট লজিক
 document.addEventListener('DOMContentLoaded', function() {
