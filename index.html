@@ -16,11 +16,18 @@
 import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0";
 
 let generator;
+let isReady = false;
 
 async function loadModel() {
-    document.getElementById("output").innerText = "Loading AI model...";
-    generator = await pipeline("text2text-generation", "Xenova/flan-t5-small");
-    document.getElementById("output").innerText = "AI Ready!";
+    document.getElementById("output").innerText = "⏳ AI লোড হচ্ছে...";
+    try {
+        generator = await pipeline("text2text-generation", "Xenova/flan-t5-small");
+        isReady = true;
+        document.getElementById("output").innerText = "✅ AI Ready!";
+    } catch (e) {
+        document.getElementById("output").innerText = "❌ Model load error!";
+        console.error(e);
+    }
 }
 
 loadModel();
@@ -28,11 +35,29 @@ loadModel();
 window.ask = async function() {
     const text = document.getElementById("input").value;
 
-    document.getElementById("output").innerText = "Thinking...";
+    if (!isReady) {
+        document.getElementById("output").innerText = "⏳ একটু অপেক্ষা করো, AI এখনো load হচ্ছে...";
+        return;
+    }
 
-    const result = await generator("Explain simply: " + text);
+    if (!text) return;
 
-    document.getElementById("output").innerText = result[0].generated_text;
+    document.getElementById("output").innerText = "🤔 ভাবছে...";
+
+    try {
+        const result = await generator("Explain simply in Bangla: " + text);
+
+        if (result && result[0] && result[0].generated_text) {
+            document.getElementById("output").innerText = result[0].generated_text;
+        } else {
+            document.getElementById("output").innerText = "❌ উত্তর পাওয়া যায়নি!";
+            console.log(result);
+        }
+
+    } catch (error) {
+        document.getElementById("output").innerText = "❌ Error: " + error.message;
+        console.error(error);
+    }
 }
 </script>
 
