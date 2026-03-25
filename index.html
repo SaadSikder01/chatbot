@@ -1,64 +1,183 @@
 <!DOCTYPE html>
-<html>
+<html lang="bn">
 <head>
-  <title>Study Chatbot</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>বই পড়ার এআই সহকারী</title>
+    <style>
+        /* চ্যাটবটের ডিজাইন (CSS) */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; }
+        
+        #chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+
+        #chat-header {
+            background: #4A90E2;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        #chat-box {
+            height: 350px;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #fafafa;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .user-msg {
+            align-self: flex-end;
+            background: #4A90E2;
+            color: white;
+        }
+
+        .ai-msg {
+            align-self: flex-start;
+            background: #e9e9eb;
+            color: #333;
+        }
+
+        #input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background: white;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        #send-btn {
+            background: #4A90E2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin-left: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #send-btn:hover { background: #357ABD; }
+
+        /* লোডিং অ্যানিমেশন */
+        .typing { font-style: italic; color: #888; font-size: 12px; }
+    </style>
 </head>
 <body>
 
-<h2>📚 Study Chatbot</h2>
+<div style="padding: 50px;">
+    <h1>শিক্ষার্থীদের বই পড়ার প্ল্যাটফর্ম</h1>
+    <p>এখানে আপনার পিডিএফ রিডার বা বইয়ের তালিকা থাকবে। ডানে নিচের কোণায় এআই চ্যাটবটটি দেখুন।</p>
+</div>
 
-<input id="input" placeholder="প্রশ্ন লিখো..." style="width:300px;">
-<button onclick="ask()">Ask</button>
+<div id="chat-widget">
+    <div id="chat-header">বই পড়ার এআই সহকারী</div>
+    <div id="chat-box" hidden-scroll>
+        <div class="message ai-msg">নমস্কার! আমি আপনাকে বইয়ের কঠিন শব্দ বা তথ্য বুঝতে সাহায্য করতে পারি। কিছু জিজ্ঞেস করুন।</div>
+    </div>
+    <div id="input-area">
+        <input type="text" id="user-input" placeholder="আপনার প্রশ্ন লিখুন...">
+        <button id="send-btn" onclick="askAI()">পাঠান</button>
+    </div>
+</div>
 
-<p id="output"></p>
+<script>
+    // আপনার Gemini API কনফিগারেশন
+    const API_KEY = "AIzaSyD9XsWOq4BEnSctSSvidfHAiYo-ZJdFcwY"; // এখানে আপনার আসল কি দিন
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
-<script type="module">
-import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0";
+    async function askAI() {
+        const inputField = document.getElementById('user-input');
+        const chatBox = document.getElementById('chat-box');
+        const userText = inputField.value.trim();
 
-let generator;
-let isReady = false;
+        if (!userText) return;
 
-async function loadModel() {
-    document.getElementById("output").innerText = "⏳ AI লোড হচ্ছে...";
-    try {
-        generator = await pipeline("text2text-generation", "Xenova/flan-t5-small");
-        isReady = true;
-        document.getElementById("output").innerText = "✅ AI Ready!";
-    } catch (e) {
-        document.getElementById("output").innerText = "❌ Model load error!";
-        console.error(e);
-    }
-}
+        // ইউজারের মেসেজ যোগ করা
+        appendMessage(userText, 'user-msg');
+        inputField.value = '';
 
-loadModel();
+        // লোডিং মেসেজ
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'message ai-msg typing';
+        loadingDiv.innerText = 'এআই ভাবছে...';
+        chatBox.appendChild(loadingDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
 
-window.ask = async function() {
-    const text = document.getElementById("input").value;
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `তুমি একজন শিক্ষা সহকারী। শিক্ষার্থীদের বই পড়ার সময় কোনো কঠিন শব্দ বা প্রশ্নের সহজ ব্যাখ্যা দাও। প্রশ্ন: ${userText}`
+                        }]
+                    }]
+                }),
+                headers: { 'Content-Type': 'application/json' }
+            });
 
-    if (!isReady) {
-        document.getElementById("output").innerText = "⏳ একটু অপেক্ষা করো, AI এখনো load হচ্ছে...";
-        return;
-    }
+            const data = await response.json();
+            chatBox.removeChild(loadingDiv); // লোডিং সরানো
 
-    if (!text) return;
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                appendMessage(aiResponse, 'ai-msg');
+            } else {
+                appendMessage("দুঃখিত, আমি উত্তরটি খুঁজে পাইনি।", 'ai-msg');
+            }
 
-    document.getElementById("output").innerText = "🤔 ভাবছে...";
-
-    try {
-        const result = await generator("Explain simply in Bangla: " + text);
-
-        if (result && result[0] && result[0].generated_text) {
-            document.getElementById("output").innerText = result[0].generated_text;
-        } else {
-            document.getElementById("output").innerText = "❌ উত্তর পাওয়া যায়নি!";
-            console.log(result);
+        } catch (error) {
+            chatBox.removeChild(loadingDiv);
+            console.error("Error:", error);
+            appendMessage("সার্ভারের সাথে সংযোগ করা যাচ্ছে না।", 'ai-msg');
         }
-
-    } catch (error) {
-        document.getElementById("output").innerText = "❌ Error: " + error.message;
-        console.error(error);
     }
-}
+
+    function appendMessage(text, className) {
+        const chatBox = document.getElementById('chat-box');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${className}`;
+        msgDiv.innerText = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // এন্টার বাটন চাপলে মেসেজ পাঠানো
+    document.getElementById('user-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            askAI();
+        }
+    });
 </script>
 
 </body>
